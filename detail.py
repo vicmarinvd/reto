@@ -9,7 +9,12 @@ def render(return_main, load_data):
     
     # Mostrar detalles de la sucursal seleccionada
     suc = st.session_state.selected_sucursal
-    st.header(f"Detalles de sucursal {suc}")
+    col1, col2 = st.columns([6,1])
+    with col1: 
+        st.header(f"Detalles de sucursal {suc}")
+    with col2: 
+        if st.button("Main"):
+            return_main()
     
     # Cluster al que pertenece
     df_filtered_cluster = df_clusters[df_clusters['Sucursal'] == suc]
@@ -160,6 +165,3 @@ def render(return_main, load_data):
         - Ajustar estrategia para reducir riesgos.
         - Monitorear indicadores críticos
     """)
-                
-    if st.button("Main"):
-        return_main()

@@ -1,0 +1,9 @@
+/venv
+.env
+.devcontainer/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.streamlit/
+.DS_Store

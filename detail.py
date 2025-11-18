@@ -215,6 +215,5 @@ def render(return_main, load_data):
         - Implementar acciones correctivas inmediatas.
         - Revisar procesos críticos de operación.
         - Ajustar estrategia para reducir riesgos.
-        - Monitorear indicadores críticos.
-        """)
-    
+        - Monitorear indicadores críticos
+    """)

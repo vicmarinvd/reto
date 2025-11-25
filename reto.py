@@ -30,8 +30,18 @@ st.set_page_config(
 st.markdown("""
 <style>
 
+/* Contenedor principal de la barra lateral con altura fija y scroll */
+.sidebar-fixed-container {
+    max-height: 80vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px;
+    border-right: 1px solid #eee;
+}
+    
+    
 /* Fondo general */
-.main {
+.main .block-container {
     background-color: #f5f8f5;
 }
 
@@ -122,6 +132,26 @@ h2, h3 {
 .stTabs [aria-selected="true"] {
     background-color: #2e7d32;
     color: white;
+}
+
+/* Contenedor para controlar el tamaño relativo */
+.button-container {
+    width: 100%;
+    display: justify;
+    justify-content: center;
+    margin: 0.2em 0;
+}
+    
+/* Estilo para botones de Streamlit */
+.stButton > button {
+    width: 100%!important;
+    min-width: 150px !important;
+    max-width: 300px !important;
+    height: 2em !important;
+    border-radius: 0.5em !important;
+    font-weight: bold !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
 }
 
 </style>
@@ -231,62 +261,84 @@ def render_main_page():
     # Cargar datos
     df_clusters, df_completos = load_data()
 
-    # Título principal
-    st.title("Dashboard de Análisis de Riesgo - Sucursales")
-    st.markdown("---")
-
     # ========================================
     # SIDEBAR - FILTROS
     # ========================================
-    st.sidebar.header("Filtros de Análisis")
+    
+    with st.sidebar:
+        st.header("Filtros de Análisis")
+        
+        st.markdown('<div class="sidebar-fixed-container">', unsafe_allow_html=True)
+        
+        # Filtro de búsqueda por nombre de sucursal
+        search_term = st.text_input("Buscar sucursal:")
+        filtered_sucursales = []
+        
+        if search_term:
+            filtered_df = df_clusters[df_clusters["Sucursal"].str.contains(search_term, case=False)]
+            if len(filtered_df) > 0:
+                # Mostrar lista de sucursales filtradas
+                filtered_sucursales = filtered_df['Sucursal'].tolist()
+                st.write("Selecciona para ir al detalle")
+                for i, suc in enumerate(filtered_sucursales):
+                    if st.button(f"{suc} ▾", key=f"search_{i}_{suc}", type='secondary'):
+                        go_to_detail(suc)
+            else:
+                st.warning("No se encontraron sucursales que coincidan con la búsqueda.")
 
-    # Filtro de región
-    regiones = ['Todas'] + sorted(df_clusters['Región'].unique().tolist())
-    region_seleccionada = st.sidebar.selectbox("Región", regiones, key=f"region_filter_{st.session_state.page}")
+        # Filtro de región
+        regiones = ['Todas'] + sorted(df_clusters['Región'].unique().tolist())
+        region_seleccionada = st.selectbox("Región", regiones, key=f"region_filter_{st.session_state.page}")
 
-    # Filtro de cluster
-    clusters = ['Todos'] + sorted(df_clusters['Cluster_KM'].unique().tolist())
-    cluster_seleccionado = st.sidebar.selectbox("Cluster", clusters, key='cluster_filter')
+        # Filtro de cluster
+        clusters = ['Todos'] + sorted(df_clusters['Cluster_KM'].unique().tolist())
+        cluster_seleccionado = st.selectbox("Cluster", clusters, key='cluster_filter')
 
-    # Filtro de nivel de riesgo
-    nivel_riesgo_seleccionado = st.sidebar.multiselect(
-        "Nivel de Riesgo", 
-        ['Alto', 'Medio', 'Bajo'],
-        default=['Alto', 'Medio', 'Bajo'],
-        key='risk_filter'
-    )
+        # Filtro de nivel de riesgo
+        nivel_riesgo_seleccionado = st.multiselect(
+            "Nivel de Riesgo", 
+            ['Alto', 'Medio', 'Bajo'],
+            default=['Alto', 'Medio', 'Bajo'],
+            key='risk_filter'
+        )
 
-    # Filtros adicionales de métricas
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("Filtros por Métricas")
+        # Filtros adicionales de métricas
+        st.markdown("---")
+        st.subheader("Filtros por Métricas")
 
-    fpd_range = st.sidebar.slider(
-        "FPD Neto ($)",
-        min_value=0.0,
-        max_value=float(df_clusters['FPD_Neto_Actual'].max()),
-        value=(0.0, float(df_clusters['FPD_Neto_Actual'].max())),
-        format="$%.0f",
-        key='fpd_slider'
-    )
+        fpd_range = st.slider(
+            "FPD Neto ($)",
+            min_value=0.0,
+            max_value=float(df_clusters['FPD_Neto_Actual'].max()),
+            value=(0.0, float(df_clusters['FPD_Neto_Actual'].max())),
+            format="$%.0f",
+            key='fpd_slider'
+        )
 
-    icv_range = st.sidebar.slider(
-        "ICV (%)",
-        min_value=0.0,
-        max_value=float(df_clusters['ICV_Actual'].max()),
-        value=(0.0, float(df_clusters['ICV_Actual'].max())),
-        key='icv_slider'
-    )
+        icv_range = st.slider(
+            "ICV (%)",
+            min_value=0.0,
+            max_value=float(df_clusters['ICV_Actual'].max()),
+            value=(0.0, float(df_clusters['ICV_Actual'].max())),
+            key='icv_slider'
+        )
 
-    morosidad_range = st.sidebar.slider(
-        "Morosidad (%)",
-        min_value=0.0,
-        max_value=float(df_clusters['Tasa_Morosidad'].max()),
-        value=(0.0, float(df_clusters['Tasa_Morosidad'].max())),
-        key='morosidad_slider'
-    )
+        morosidad_range = st.slider(
+            "Morosidad (%)",
+            min_value=0.0,
+            max_value=float(df_clusters['Tasa_Morosidad'].max()),
+            value=(0.0, float(df_clusters['Tasa_Morosidad'].max())),
+            key='morosidad_slider'
+        )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # Aplicar filtros
     df_filtered = df_clusters.copy()
+    
+    # Filtrar por nombre de sucursal si se encontraron coincidencias
+    if len(filtered_sucursales) > 0:
+        df_filtered = df_filtered[df_filtered['Sucursal'].isin(filtered_sucursales)]
 
     if region_seleccionada != 'Todas':
         df_filtered = df_filtered[df_filtered['Región'] == region_seleccionada]
@@ -306,6 +358,12 @@ def render_main_page():
         (df_filtered['Tasa_Morosidad'] >= morosidad_range[0]) &
         (df_filtered['Tasa_Morosidad'] <= morosidad_range[1])
     ]
+    
+    # ========================================
+    # Título principal
+    # ========================================
+    st.title("Dashboard de Análisis de Riesgo - Sucursales")
+    st.markdown("---")
 
     # ========================================
     # KPIs PRINCIPALES
@@ -416,36 +474,13 @@ def render_main_page():
         with col1:
             sucursales_alto_list = df_filtered[df_filtered['Nivel_Riesgo'] == 'Alto']['Sucursal'].tolist()
             st.markdown(f"<div class='risk-badge-high'>Alto Riesgo: {len(sucursales_alto_list)} sucursales</div>", unsafe_allow_html=True)
-            with st.expander(f"🔴 Alto Riesgo - Ver más"):
-                if len(sucursales_alto_list) > 0:
-                    for  i, suc in enumerate(sucursales_alto_list):
-                        if st.button(f"{suc} ▾", key=f"Alto__{i}_{suc}"):
-                            go_to_detail(suc)
-                    # st.write("\n".join([f"- {s}" for s in sucursales_alto_list]))
-                else:
-                    st.write("No hay sucursales en este nivel.")
         with col2:
             sucursales_medio_list = df_filtered[df_filtered['Nivel_Riesgo'] == 'Medio']['Sucursal'].tolist()
             st.markdown(f"<div class='risk-badge-medium'>Medio Riesgo: {len(sucursales_medio_list)} sucursales</div>", unsafe_allow_html=True)
-            with st.expander(f"🟠 Medio Riesgo - Ver más"):
-                if len(sucursales_medio_list) > 0:
-                    for  i, suc in enumerate(sucursales_medio_list):
-                        if st.button(f"{suc} ▾", key=f"Medio_{i}_{suc}"):
-                            go_to_detail(suc)
-                    # st.write("\n".join([f"- {s}" for s in sucursales_medio_list]))
-                else:
-                    st.write("No hay sucursales en este nivel.")
+ 
         with col3:
             sucursales_bajo_list = df_filtered[df_filtered['Nivel_Riesgo'] == 'Bajo']['Sucursal'].tolist()
             st.markdown(f"<div class='risk-badge-low'>Bajo Riesgo: {len(sucursales_bajo_list)} sucursales</div>", unsafe_allow_html=True)
-            with st.expander(f"🟢 Bajo Riesgo - Ver más"):
-                if len(sucursales_bajo_list) > 0:
-                    for  i, suc in enumerate(sucursales_bajo_list):
-                        if st.button(f"{suc} ▾", key=f"Bajo_{i}_{suc}"):
-                            go_to_detail(suc)
-                    #st.write("\n".join([f"- {s}" for s in sucursales_bajo_list]))
-                else:
-                    st.write("No hay sucursales en este nivel.")
 
     else:
         st.warning("⚠️ No hay sucursales que coincidan con los filtros seleccionados")

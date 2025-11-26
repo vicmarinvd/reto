@@ -155,20 +155,7 @@ def render(return_main, load_data):
                     .mark_line()
                     .encode(
                         x=alt.X('Periodo:N', sort=orden, title='Periodo'),
-                        y=alt.Y(f'{col_name}:Q', title=f'{col_name}')
-                    )
-                )
-                
-                points = (
-                    alt.Chart(df_long)
-                    .mark_circle(size=70)   # tamaño del punto
-                    .encode(
-                        x=alt.X('Periodo:N', sort=orden),
-                        y=alt.Y(f'{col_name}:Q'),
-                        tooltip=[
-                            alt.Tooltip('Periodo:N', title='Periodo'),
-                            alt.Tooltip(f'{col_name}:Q', title=col_name, format=',.2f'),
-                        ]
+                        y=alt.Y(f'{col_name}:Q', title=f'{col_name}'),
                     )
                 )
                 
@@ -177,15 +164,11 @@ def render(return_main, load_data):
                     .mark_line(strokeDash=[5,5], color='red') 
                     .encode(
                         x=alt.X('Periodo:N', sort=orden),
-                        y=alt.Y('tendencia:Q'),
-                        tooltip=[
-                            alt.Tooltip('Periodo:N', title='Periodo'),
-                            alt.Tooltip('tendencia:Q', title='Tendencia', format=',.2f')
-                        ]
+                        y=alt.Y('tendencia:Q')
                     )
                 )
                 
-                final_chart = line_chart + points + trend
+                final_chart = line_chart + trend
                 
                 col1, col2 = st.columns([8,3])
                 # Mostrar título y tendencia

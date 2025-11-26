@@ -166,37 +166,7 @@ def render(return_main, load_data):
         # Gráfico de lineas del ICV a lo largo del tiempo con tendencia
         columnas_historicas = ["ICV", "Capital Dispersado", "Saldo Insoluto Total", "Saldo Insoluto Vencido", "Saldo 30-89", "FPD Neto", "Castigos", "Quitas"]
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(columnas_historicas)
-        """
-        df_icv  = df_completos[df_completos['Sucursal'] == suc].filter(like='ICV')
-        # Pasar a formato largo
-        df_long = df_icv.melt(
-            var_name='Periodo',
-            value_name='ICV'
-        )
         
-        orden = df_icv.columns.tolist()
-
-        # Ordenar los periodos según el orden original del df
-        df_long['Periodo'] = pd.Categorical(df_long['Periodo'], categories=orden, ordered=True)
-        df_long = df_long.sort_values('Periodo').reset_index(drop=True)
-        df_long['t'] = range(len(df_long))
-        
-        # Calcular regresión lineal simple manualmente
-        x = df_long['t']
-        y = df_long['ICV']
-        
-        # Fórmula de regresión lineal simple
-        n = len(x)
-        sum_x = x.sum()
-        sum_y = y.sum()
-        sum_xy = (x * y).sum()
-        sum_x2 = (x ** 2).sum()
-        
-        pendiente = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x ** 2)
-        intercepto = (sum_y - pendiente * sum_x) / n
-        
-        df_long['tendencia'] = intercepto + pendiente * df_long['t']
-        """
         datos_graficas = calcular_datos_gráficas(columnas_historicas)
         for idx, tab in enumerate([tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8]):
             with tab:
@@ -235,9 +205,7 @@ def render(return_main, load_data):
                         st.error(f"Tendencia a la baja ({pendiente:,.2f})")
                 # Mostrar gráfica
                 st.altair_chart(final_chart, use_container_width=True)
-
-                
-            
+     
     with col6:
         st.markdown("### Posibles causas")
         st.warning(f"""

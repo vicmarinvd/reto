@@ -23,9 +23,7 @@ def render(return_main, load_data):
     df_filtered_cluster = df_clusters[df_clusters['Sucursal'] == suc]
     cluster = df_filtered_cluster['Cluster_KM'].values[0]
     region = df_filtered_cluster['Región'].values[0]
-    
     col1, col2 = st.columns([5,1])
-    
     with col1:
         st.subheader(f"Cluster: {cluster}")
     with col2: 
@@ -215,5 +213,5 @@ def render(return_main, load_data):
         - Implementar acciones correctivas inmediatas.
         - Revisar procesos críticos de operación.
         - Ajustar estrategia para reducir riesgos.
-        - Monitorear indicadores críticos
-    """)
+        - Monitorear indicadores críticos.
+        """)

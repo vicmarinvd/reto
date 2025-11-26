@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import numpy as np
+import ast
+import re
+from geminiPrueba import load_AI_info_sucursal
     
 def render(return_main, load_data):
     # Cargar datos
@@ -19,7 +22,43 @@ def render(return_main, load_data):
     # Cluster al que pertenece
     df_filtered_cluster = df_clusters[df_clusters['Sucursal'] == suc]
     cluster = df_filtered_cluster['Cluster_KM'].values[0]
-    st.subheader(f"Cluster: {cluster}")
+    region = df_filtered_cluster['Región'].values[0]
+    col1, col2 = st.columns([5,1])
+    with col1:
+        st.subheader(f"Cluster: {cluster}")
+    with col2: 
+        st.subheader(f"Región: {region}")
+    
+    """
+    # Detalles adicionenales desde AI
+    caracteristicas_sucursal = ", ".join([f"{col}: {df_filtered_cluster[col].values[0]}" for col in df_filtered_cluster.columns if col not in ['Sucursal', 'Cluster_KM']])
+    solicitud = f"Toma el rol de analista de riesgo en una financiera mexicana que otorga préstamos a jubilados y pensionados. Con base en los datos proporcionados de la sucursal {suc} y lo siguiente: {caracteristicas_sucursal}. Genera lo siguiente: 1. Una lista EXACTA de 5 posibles causas por las que la sucursal podría estar en riesgo, 2. Una lista EXACTA de 6 sugerencias de mejora relacionadas directamente con las causas anteriores. Instrucciones obligatorias: 1. Cada causa y cada sugerencia debe ser una frase clave de máximo 10 palabras. 2. Las dos listas deben entregarse en arreglos (listas) válidos, sin texto adicional antes o después. 3. Únicamente los siguientes indicadores están en porcentaje (escala 0-100): Ratio_CD_SI_Actual, Tasa_Morosidad, Tasa_Castigos, Score_Riesgo. 4. No incluyas explicaciones, justificaciones, ni texto externo. 5. Solo retorna los dos arreglos."
+    response_ai = load_AI_info_sucursal(solicitud)
+    if isinstance(response_ai, Exception):
+        st.error("Error al obtener información de AI.")
+    else:
+        ai_content = response_ai.text
+        # Procesar la respuesta para extraer las listas
+        matches = re.findall(r"\[[\s\S]*?\]", ai_content)
+
+        if len(matches) < 2:
+            st.error("La IA no devolvió al menos dos listas válidas.")
+            causas_formatted = "No disponible"
+            sugerencias_formatted = "No disponible"
+        else:
+            try:
+                causas = ast.literal_eval(matches[0])
+                sugerencias = ast.literal_eval(matches[1])
+
+                causas_formatted = "\n".join([f"- {c}" for c in causas])
+                sugerencias_formatted = "\n".join([f"- {s}" for s in sugerencias])
+
+            except Exception as e:
+                st.error("Error al convertir listas.")
+                causas_formatted = "No disponible"
+                sugerencias_formatted = "No disponible"
+
+    """
     
     # ========================================
     # KPIs PRINCIPALES
@@ -151,7 +190,7 @@ def render(return_main, load_data):
         st.altair_chart(final_chart, use_container_width=True)
     with col6:
         st.markdown("### Posibles causas")
-        st.warning("""
+        st.warning(f"""
         - Procesos clave ejecutados con inconsistencias.
         - Falta de seguimiento en tareas críticas.
         - Errores recurrentes en la operación diaria.
@@ -163,5 +202,5 @@ def render(return_main, load_data):
         - Implementar acciones correctivas inmediatas.
         - Revisar procesos críticos de operación.
         - Ajustar estrategia para reducir riesgos.
-        - Monitorear indicadores críticos
-    """)
+        - Monitorear indicadores críticos.
+        """)

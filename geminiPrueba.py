@@ -35,6 +35,7 @@ Clusters:
 - Premium: Alto desempeño.
 - Riesgo: Deterioro, alta probabilidad de pérdidas.
 """
+
 def load_AI_info_sucursal(solicitud):
     load_dotenv()
 

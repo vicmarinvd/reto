@@ -3,7 +3,7 @@ from google import genai
 from dotenv import load_dotenv
 import os
 import json
-# import streamlit as st
+import streamlit as st
 
 # st.write("La API key existe:", "GEMINI_API_KEY" in st.secrets)
 
@@ -18,8 +18,6 @@ def get_gemini_key():
 
     return api_key
 
-
-st.write("La API key existe:", "GEMINI_API_KEY" in st.secrets)
 
 # Instrucciones del sistema para DigiBot
 DIGIBOT_SYSTEM_INSTRUCTION = """

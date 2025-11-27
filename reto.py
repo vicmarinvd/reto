@@ -4,6 +4,8 @@ import altair as alt
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+import unicodedata
+import re
 import detail
 
 # -----------------------
@@ -162,7 +164,7 @@ h2, h3 {
 # -----------------------
 @st.cache_data
 def load_data():
-    excel_file = 'analisis_completo_sucursales_20251118_000424.xlsx'    
+    excel_file = 'analisis_completo_sucursales_20251127_031525.xlsx'    
     
     # Cargar datos principales
     df_clusters = pd.read_excel(excel_file, sheet_name='Clusters_S6')
@@ -182,11 +184,11 @@ def load_data():
         score = 0
         
         # FPD
-        if row['FPD_Neto_Actual'] > 15:
+        if row['FPD_Actual'] > 15:
             score += 3
-        elif row['FPD_Neto_Actual'] > 8:
+        elif row['FPD_Actual'] > 8:
             score += 2
-        elif row['FPD_Neto_Actual'] > 5:
+        elif row['FPD_Actual'] > 5:
             score += 1
             
         # ICV
@@ -216,7 +218,7 @@ def load_data():
     
     # Score de riesgo (0-100)
     df_clusters['Score_Riesgo'] = (
-        (df_clusters['FPD_Neto_Actual'] / (df_clusters['FPD_Neto_Actual'].max() + 1) * 40) +
+        (df_clusters['FPD_Actual'] / (df_clusters['FPD_Actual'].max() + 1) * 40) +
         (df_clusters['Tasa_Morosidad'] / (df_clusters['Tasa_Morosidad'].max() + 1) * 30) +
         (df_clusters['ICV_Actual'] / (df_clusters['ICV_Actual'].max() + 1) * 30)
     )
@@ -274,8 +276,17 @@ def render_main_page():
         search_term = st.text_input("Buscar sucursal:")
         filtered_sucursales = []
         
+        def normalize(text):
+            if not isinstance(text, str):
+                return ""
+            text = unicodedata.normalize('NFKD', text)
+            text = text.encode('ascii', 'ignore').decode("utf-8")
+            return text.lower()
+        
         if search_term:
-            filtered_df = df_clusters[df_clusters["Sucursal"].str.contains(search_term, case=False)]
+            term_normalized = re.sub(r"[^a-z\s]", "", normalize(search_term))
+            df_clusters["Sucursal_normalizada"] = df_clusters["Sucursal"].apply(normalize)
+            filtered_df = df_clusters[df_clusters["Sucursal_normalizada"].str.contains(term_normalized, case=False)]
             if len(filtered_df) > 0:
                 # Mostrar lista de sucursales filtradas
                 filtered_sucursales = filtered_df['Sucursal'].tolist()
@@ -309,8 +320,8 @@ def render_main_page():
         fpd_range = st.slider(
             "FPD Neto ($)",
             min_value=0.0,
-            max_value=float(df_clusters['FPD_Neto_Actual'].max()),
-            value=(0.0, float(df_clusters['FPD_Neto_Actual'].max())),
+            max_value=float(df_clusters['FPD_Actual'].max()),
+            value=(0.0, float(df_clusters['FPD_Actual'].max())),
             format="$%.0f",
             key='fpd_slider'
         )
@@ -351,8 +362,8 @@ def render_main_page():
 
     # Filtros de métricas
     df_filtered = df_filtered[
-        (df_filtered['FPD_Neto_Actual'] >= fpd_range[0]) &
-        (df_filtered['FPD_Neto_Actual'] <= fpd_range[1]) &
+        (df_filtered['FPD_Actual'] >= fpd_range[0]) &
+        (df_filtered['FPD_Actual'] <= fpd_range[1]) &
         (df_filtered['ICV_Actual'] >= icv_range[0]) &
         (df_filtered['ICV_Actual'] <= icv_range[1]) &
         (df_filtered['Tasa_Morosidad'] >= morosidad_range[0]) &
@@ -411,15 +422,15 @@ def render_main_page():
         """, unsafe_allow_html=True)
 
     with col4:
-        fpd_promedio = df_filtered['FPD_Neto_Actual'].mean()
-        fpd_global = df_clusters['FPD_Neto_Actual'].mean()
+        fpd_promedio = df_filtered['FPD_Actual'].mean()
+        fpd_global = df_clusters['FPD_Actual'].mean()
         delta_fpd = fpd_promedio - fpd_global
         delta_color_fpd = "#c62828" if delta_fpd > 0 else "#2e7d32"
-        delta_text_fpd = f"+${delta_fpd:,.0f}" if delta_fpd > 0 else f"${delta_fpd:,.0f}"
+        delta_text_fpd = f"+{delta_fpd:.2f}%" if delta_fpd > 0 else f"{delta_fpd:.2f}%"
         st.markdown(f"""
         <div class='metric-card'>
-            <h4>FPD Neto Promedio</h4>
-            <p>${fpd_promedio:,.0f}</p>
+            <h4>FPD Promedio</h4>
+            <p>{fpd_promedio:.2f}%</p>
             <small style='color: {delta_color_fpd}; font-weight: 600;'>{delta_text_fpd} vs promedio</small>
         </div>
         """, unsafe_allow_html=True)
@@ -443,7 +454,7 @@ def render_main_page():
             hover_data={
                 "Región": True,
                 "Cluster_KM": True,
-                "FPD_Neto_Actual": ":.2f",
+                "FPD_Actual": ":.2f",
                 "ICV_Actual": ":.2f",
                 "Tasa_Morosidad": ":.2f",
                 "lat": False,
@@ -502,7 +513,7 @@ def render_main_page():
                 'Capital_Dispersado_Actual': 'sum',
                 'Saldo_Insoluto_Total_Actual': 'sum',
                 'Saldo_Insoluto_Vencido_Actual': 'sum',
-                'FPD_Neto_Actual': 'mean',
+                'FPD_Actual': 'mean',
                 'ICV_Actual': 'mean',
                 'Tasa_Morosidad': 'mean',
                 'Score_Riesgo': 'mean'
@@ -609,7 +620,7 @@ def render_main_page():
                 'Capital_Dispersado_Actual': 'sum',
                 'Saldo_Insoluto_Total_Actual': 'sum',
                 'Saldo_Insoluto_Vencido_Actual': 'sum',
-                'FPD_Neto_Actual': 'mean',
+                'FPD_Actual': 'mean',
                 'ICV_Actual': 'mean',
                 'Tasa_Morosidad': 'mean',
                 'Score_Riesgo': 'mean'
@@ -686,7 +697,7 @@ def render_main_page():
     if len(df_filtered) > 0:
         # Obtener top 10 por score de riesgo
         top_10_riesgo = df_filtered.nlargest(10, 'Score_Riesgo')[
-            ['Sucursal', 'Región', 'Cluster_KM', 'FPD_Neto_Actual', 'ICV_Actual',
+            ['Sucursal', 'Región', 'Cluster_KM', 'FPD_Actual', 'ICV_Actual',
             'Capital_Dispersado_Actual', 'Saldo_Insoluto_Total_Actual',
             'Castigos_Actual', 'Quitas_Actual', 'Score_Riesgo', 'Nivel_Riesgo']
         ].copy()
@@ -695,7 +706,7 @@ def render_main_page():
         st.subheader("Top 10 Sucursales - Indicadores de Riesgo")
         
         tabla_top10 = top_10_riesgo.copy()
-        tabla_top10['FPD_Neto_Actual'] = tabla_top10['FPD_Neto_Actual'].apply(lambda x: f"${x:,.0f}")
+        tabla_top10['FPD_Actual'] = tabla_top10['FPD_Actual'].apply(lambda x: f"{x:.2f}%")
         tabla_top10['ICV_Actual'] = tabla_top10['ICV_Actual'].apply(lambda x: f"{x:.2f}%")
         tabla_top10['Capital_Dispersado_Actual'] = tabla_top10['Capital_Dispersado_Actual'].apply(lambda x: f"${x:,.0f}")
         tabla_top10['Saldo_Insoluto_Total_Actual'] = tabla_top10['Saldo_Insoluto_Total_Actual'].apply(lambda x: f"${x:,.0f}")
@@ -704,7 +715,7 @@ def render_main_page():
         tabla_top10['Score_Riesgo'] = tabla_top10['Score_Riesgo'].apply(lambda x: f"{x:.2f}")
         
         tabla_top10.columns = [
-            'Sucursal', 'Región', 'Cluster', 'FPD Neto', 'ICV %',
+            'Sucursal', 'Región', 'Cluster', 'FPD %', 'ICV %',
             'Capital Dispersado', 'Saldo Insoluto', 'Castigos', 'Quitas', 'Score Riesgo', 'Nivel Riesgo'
         ]
         

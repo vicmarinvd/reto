@@ -149,15 +149,15 @@ def render(return_main, load_data):
         """, unsafe_allow_html=True)
 
     with col4:
-        fpd_promedio = df_filtered_cluster['FPD_Neto_Actual'].mean()
-        fpd_global = df_clusters['FPD_Neto_Actual'].mean()
+        fpd_promedio = df_filtered_cluster['FPD_Actual'].mean()
+        fpd_global = df_clusters['FPD_Actual'].mean()
         delta_fpd = fpd_promedio - fpd_global
         delta_color_fpd = "#c62828" if delta_fpd > 0 else "#2e7d32"
-        delta_text_fpd = f"+${delta_fpd:,.0f}" if delta_fpd > 0 else f"${delta_fpd:,.0f}"
+        delta_text_fpd = f"+{delta_fpd:.2f}%" if delta_fpd > 0 else f"{delta_fpd:.2f}%"
         st.markdown(f"""
         <div class='metric-card'>
-            <h4>FPD Neto Promedio</h4>
-            <p>${fpd_promedio:,.0f}</p>
+            <h4>FPD Promedio</h4>
+            <p>{fpd_promedio:.2f}%</p>
             <small style='color: {delta_color_fpd}; font-weight: 600;'>{delta_text_fpd} vs promedio</small>
         </div>
         """, unsafe_allow_html=True)
@@ -174,7 +174,14 @@ def render(return_main, load_data):
         for col in nombre_columnas:
             formatted_col = col.replace(" ", "_").replace("-", "_")
             df_cols = df_completos[df_completos['Sucursal'] == suc].filter(like=formatted_col)
+            # Eliminar columnas de FPD_NETO
+            if col == "FPD":
+                regex = rf'^{formatted_col}_(T.*|[Aa]ctual.*)$'
+                df_cols = (df_completos[df_completos['Sucursal'] == suc].filter(regex=regex)) 
             
+            df_cols = df_cols.copy()
+            df_cols.columns = [c.rsplit("_", 1)[-1] for c in df_cols.columns]
+        
             # Pasar a formato largo
             df_long = df_cols.melt(
                 var_name='Periodo',
@@ -274,7 +281,7 @@ def render(return_main, load_data):
         'dataset_completo': df_clusters.to_dict('records'),
         'total_sucursales': len(df_clusters),
         'sucursales_alto_riesgo': len(df_clusters[df_clusters['Nivel_Riesgo'] == 'Alto']),
-        'promedio_fpd': df_clusters['FPD_Neto_Actual'].mean(),
+        'promedio_fpd': df_clusters['FPD_Actual'].mean(),
         'promedio_icv': df_clusters['ICV_Actual'].mean()
     }
     chatWidget.render_chat_widget(chat_context)

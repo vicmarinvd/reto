@@ -64,8 +64,17 @@ def analyze_branch_with_gemini(sucursal_data):
     Returns:
         Diccionario con causes, suggestions y riskFactor
     """
-    load_dotenv()
-    
+
+    # Obtener API Key desde secrets o .env
+    try:
+        api_key = get_gemini_key()
+    except Exception as e:
+        return {
+            "causes": ["API Key no encontrada"],
+            "suggestions": ["Configurar GEMINI_API_KEY en secrets o .env"],
+            "riskFactor": "N/A"
+        }
+
     prompt = f"""
     Analiza la sucursal: {sucursal_data.get('Sucursal', 'N/A')}
     Datos:
@@ -88,10 +97,11 @@ def analyze_branch_with_gemini(sucursal_data):
         "riskFactor": "el indicador o factor que más pone en riesgo a la sucursal"
     }}
     """
-    
+
     try:
-        client = genai.Client()
-        
+        # Inicializar cliente Gemini con la API key correcta
+        client = genai.Client(api_key=api_key)
+
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
@@ -101,11 +111,10 @@ def analyze_branch_with_gemini(sucursal_data):
                 "temperature": 0.4,
             }
         )
-        
-        # Parsear respuesta JSON
-        analysis = json.loads(response.text)
-        return analysis
-        
+
+        # Convertir respuesta a JSON real
+        return json.loads(response.text)
+
     except Exception as e:
         print(f"❌ Error al analizar sucursal: {e}")
         return {
@@ -113,6 +122,7 @@ def analyze_branch_with_gemini(sucursal_data):
             "suggestions": ["Revisar configuración", "Contactar soporte"],
             "riskFactor": "Desconocido"
         }
+
 
 
 def chat_with_digibot(history, new_message, context_data=""):

@@ -96,10 +96,10 @@ def analyze_branch_with_gemini(sucursal_data):
         "riskFactor": "el indicador o factor que más pone en riesgo a la sucursal"
     }}
     """
-
+    
     try:
-        client = genai.Client(api_key=api_key)
-
+        client = genai.Client()
+        
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,

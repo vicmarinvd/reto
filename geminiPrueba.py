@@ -1,36 +1,23 @@
-# from google import genai
-# from dotenv import load_dotenv
-# import os
-
-# def load_AI_info_sucursal(solicitud):
-#     load_dotenv()
-#     api_key = os.getenv("GEMINI_API_KEY")
-    
-#     try:
-#         client = genai.Client()
-#         print("✅ Cliente de Gemini inicializado correctamente usando la clave del .env")
-
-#         # The client gets the API key from the environment variable `GEMINI_API_KEY`.
-#         client = genai.Client()
-
-#         response = client.models.generate_content(
-#             model="gemini-2.5-flash", 
-#             contents=solicitud
-#         )
-        
-#         # print(response.text)
-#         return response
-        
-#     except ValueError as e:
-#         print(f"❌ Error al inicializar el cliente: {e}")
-#         print("Asegúrate de que la variable 'GEMINI_API_KEY' esté en tu archivo .env.")
-#         return e
-
 
 from google import genai
 from dotenv import load_dotenv
 import os
 import json
+# import streamlit as st
+
+# st.write("La API key existe:", "GEMINI_API_KEY" in st.secrets)
+
+def get_gemini_key():
+    load_dotenv()
+    import streamlit as st
+
+    api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        raise ValueError("❌ GEMINI_API_KEY no está configurada en st.secrets ni en el .env")
+
+    return api_key
+
 
 # Instrucciones del sistema para DigiBot
 DIGIBOT_SYSTEM_INSTRUCTION = """
@@ -49,34 +36,21 @@ Clusters:
 - Premium: Alto desempeño.
 - Riesgo: Deterioro, alta probabilidad de pérdidas.
 """
-
 def load_AI_info_sucursal(solicitud):
-    """
-    Genera análisis de sucursal usando Gemini AI
-    
-    Args:
-        solicitud: String con la solicitud de análisis
-        
-    Returns:
-        Response object de Gemini o Exception en caso de error
-    """
-    load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
-    
+    api_key = get_gemini_key()
+
     try:
-        client = genai.Client()
-        print("✅ Cliente de Gemini inicializado correctamente usando la clave del .env")
+        client = genai.Client(api_key=api_key)
+        print("✅ Cliente de Gemini inicializado correctamente")
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash", 
+            model="gemini-2.5-flash",
             contents=solicitud
         )
-        
         return response
-        
-    except ValueError as e:
-        print(f"❌ Error al inicializar el cliente: {e}")
-        print("Asegúrate de que la variable 'GEMINI_API_KEY' esté en tu archivo .env.")
+
+    except Exception as e:
+        print(f"❌ Error al inicializar Gemini: {e}")
         return e
 
 
@@ -90,8 +64,17 @@ def analyze_branch_with_gemini(sucursal_data):
     Returns:
         Diccionario con causes, suggestions y riskFactor
     """
-    load_dotenv()
-    
+
+    # Obtener API Key desde secrets o .env
+    try:
+        api_key = get_gemini_key()
+    except Exception as e:
+        return {
+            "causes": ["API Key no encontrada"],
+            "suggestions": ["Configurar GEMINI_API_KEY en secrets o .env"],
+            "riskFactor": "N/A"
+        }
+
     prompt = f"""
     Analiza la sucursal: {sucursal_data.get('Sucursal', 'N/A')}
     Datos:
@@ -114,10 +97,11 @@ def analyze_branch_with_gemini(sucursal_data):
         "riskFactor": "el indicador o factor que más pone en riesgo a la sucursal"
     }}
     """
-    
+
     try:
-        client = genai.Client()
-        
+        # Inicializar cliente Gemini con la API key correcta
+        client = genai.Client(api_key=api_key)
+
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
@@ -127,11 +111,10 @@ def analyze_branch_with_gemini(sucursal_data):
                 "temperature": 0.4,
             }
         )
-        
-        # Parsear respuesta JSON
-        analysis = json.loads(response.text)
-        return analysis
-        
+
+        # Convertir respuesta a JSON real
+        return json.loads(response.text)
+
     except Exception as e:
         print(f"❌ Error al analizar sucursal: {e}")
         return {
@@ -141,28 +124,17 @@ def analyze_branch_with_gemini(sucursal_data):
         }
 
 
+
 def chat_with_digibot(history, new_message, context_data=""):
-    """
-    Mantiene una conversación con DigiBot
-    
-    Args:
-        history: Lista de mensajes previos en formato [{'role': 'user/model', 'parts': [{'text': '...'}]}]
-        new_message: Nuevo mensaje del usuario
-        context_data: Contexto adicional (datos de sucursal actual, etc.)
-        
-    Returns:
-        String con la respuesta de DigiBot
-    """
-    load_dotenv()
-    
+    api_key = get_gemini_key()
+
     system_instruction = DIGIBOT_SYSTEM_INSTRUCTION
     if context_data:
         system_instruction += f"\n\nContexto actual de datos en pantalla:\n{context_data}"
-    
+
     try:
-        client = genai.Client()
-        
-        # Crear chat con historial
+        client = genai.Client(api_key=api_key)
+
         chat = client.chats.create(
             model="gemini-2.5-flash",
             config={
@@ -171,11 +143,10 @@ def chat_with_digibot(history, new_message, context_data=""):
             },
             history=history
         )
-        
-        # Enviar nuevo mensaje
+
         result = chat.send_message(message=new_message)
         return result.text
-        
+
     except Exception as e:
         print(f"❌ Error en chat: {e}")
         return "Lo siento, tuve un problema al procesar tu solicitud. Por favor verifica tu conexión o API Key."

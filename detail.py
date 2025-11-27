@@ -2,9 +2,8 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import numpy as np
-import ast
-import re
-from geminiPrueba import load_AI_info_sucursal
+from geminiPrueba import analyze_branch_with_gemini
+import chatWidget
     
 def render(return_main, load_data):
     # Cargar datos
@@ -23,42 +22,86 @@ def render(return_main, load_data):
     df_filtered_cluster = df_clusters[df_clusters['Sucursal'] == suc]
     cluster = df_filtered_cluster['Cluster_KM'].values[0]
     region = df_filtered_cluster['Región'].values[0]
-    col1, col2 = st.columns([5,1])
+    nivel_riesgo = df_filtered_cluster['Nivel_Riesgo'].values[0]
+    
+    col1, col2, col3 = st.columns([3, 2, 2])
     with col1:
         st.subheader(f"Cluster: {cluster}")
     with col2: 
         st.subheader(f"Región: {region}")
+    with col3:
+        risk_color = {
+            'Alto': '#c62828',
+            'Medio': '#ef6c00',
+            'Bajo': '#2e7d32'
+        }.get(nivel_riesgo, '#666')
+        st.markdown(f"<h3 style='color: {risk_color};'>Riesgo: {nivel_riesgo}</h3>", unsafe_allow_html=True)
     
-    """
-    # Detalles adicionenales desde AI
-    caracteristicas_sucursal = ", ".join([f"{col}: {df_filtered_cluster[col].values[0]}" for col in df_filtered_cluster.columns if col not in ['Sucursal', 'Cluster_KM']])
-    solicitud = f"Toma el rol de analista de riesgo en una financiera mexicana que otorga préstamos a jubilados y pensionados. Con base en los datos proporcionados de la sucursal {suc} y lo siguiente: {caracteristicas_sucursal}. Genera lo siguiente: 1. Una lista EXACTA de 5 posibles causas por las que la sucursal podría estar en riesgo, 2. Una lista EXACTA de 6 sugerencias de mejora relacionadas directamente con las causas anteriores. Instrucciones obligatorias: 1. Cada causa y cada sugerencia debe ser una frase clave de máximo 10 palabras. 2. Las dos listas deben entregarse en arreglos (listas) válidos, sin texto adicional antes o después. 3. Únicamente los siguientes indicadores están en porcentaje (escala 0-100): Ratio_CD_SI_Actual, Tasa_Morosidad, Tasa_Castigos, Score_Riesgo. 4. No incluyas explicaciones, justificaciones, ni texto externo. 5. Solo retorna los dos arreglos."
-    response_ai = load_AI_info_sucursal(solicitud)
-    if isinstance(response_ai, Exception):
-        st.error("Error al obtener información de AI.")
-    else:
-        ai_content = response_ai.text
-        # Procesar la respuesta para extraer las listas
-        matches = re.findall(r"\[[\s\S]*?\]", ai_content)
-
-        if len(matches) < 2:
-            st.error("La IA no devolvió al menos dos listas válidas.")
-            causas_formatted = "No disponible"
-            sugerencias_formatted = "No disponible"
-        else:
-            try:
-                causas = ast.literal_eval(matches[0])
-                sugerencias = ast.literal_eval(matches[1])
-
-                causas_formatted = "\n".join([f"- {c}" for c in causas])
-                sugerencias_formatted = "\n".join([f"- {s}" for s in sugerencias])
-
-            except Exception as e:
-                st.error("Error al convertir listas.")
-                causas_formatted = "No disponible"
-                sugerencias_formatted = "No disponible"
-
-    """
+    st.markdown("---")
+    
+    # ========================================
+    # ANÁLISIS INTELIGENTE CON DIGIBOT
+    # ========================================
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #0A3D20 0%, #14532d 100%); 
+                padding: 20px; border-radius: 12px; margin-bottom: 20px;'>
+        <h2 style='color: white; margin: 0; display: flex; align-items: center;'>
+            🤖 Análisis Inteligente DigiBot
+        </h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Inicializar estado para análisis de IA
+    if 'ai_analysis' not in st.session_state:
+        st.session_state.ai_analysis = {}
+    
+    # Generar análisis automáticamente si no existe
+    if suc not in st.session_state.ai_analysis:
+        with st.spinner("DigiBot está analizando la sucursal..."):
+            sucursal_data = df_filtered_cluster.iloc[0].to_dict()
+            st.session_state.ai_analysis[suc] = analyze_branch_with_gemini(sucursal_data)
+    
+    # Mostrar análisis
+    analysis = st.session_state.ai_analysis[suc]
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div style='background: #fff5f5; padding: 20px; border-radius: 10px; border-left: 4px solid #c62828;'>
+            <h3 style='color: #c62828; margin-top: 0;'> Posibles Causas</h3>
+        """, unsafe_allow_html=True)
+        
+        for i, cause in enumerate(analysis.get('causes', []), 1):
+            st.markdown(f"**{i}.** {cause}")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Factor de riesgo principal
+        st.markdown(f"""
+        <div style='background: #ffebee; padding: 15px; border-radius: 8px; 
+                    border: 2px solid #c62828; margin-top: 15px;'>
+            <p style='margin: 0; font-weight: bold; color: #c62828; font-size: 12px;'>
+                FACTOR DE RIESGO PRINCIPAL
+            </p>
+            <p style='margin: 5px 0 0 0; color: #b71c1c; font-weight: 600; font-size: 16px;'>
+                {analysis.get('riskFactor', 'N/A')}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div style='background: #f1f8f4; padding: 20px; border-radius: 10px; border-left: 4px solid #2e7d32;'>
+            <h3 style='color: #2e7d32; margin-top: 0;'> Sugerencias de Mejora</h3>
+        """, unsafe_allow_html=True)
+        
+        for i, suggestion in enumerate(analysis.get('suggestions', []), 1):
+            st.markdown(f"**{i}.** {suggestion}")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.markdown("---")
     
     # ========================================
     # KPIs PRINCIPALES
@@ -121,8 +164,10 @@ def render(return_main, load_data):
 
     st.markdown("---")
     
-    
-    col5, col6 = st.columns([3,1])
+    # ========================================
+    # ANÁLISIS TEMPORAL
+    # ========================================
+    st.header("Análisis Temporal de Indicadores")
     
     def calcular_datos_gráficas(nombre_columnas):
         datos = {}
@@ -162,95 +207,74 @@ def render(return_main, load_data):
             
         return datos
 
-    with col5:
-        # Gráfico de lineas del ICV a lo largo del tiempo con tendencia
-        columnas_historicas = ["ICV", "Capital Dispersado", "Saldo Insoluto Total", "Saldo Insoluto Vencido", "Saldo 30-89", "FPD Neto", "Castigos", "Quitas"]
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(columnas_historicas)
-        """
-        df_icv  = df_completos[df_completos['Sucursal'] == suc].filter(like='ICV')
-        # Pasar a formato largo
-        df_long = df_icv.melt(
-            var_name='Periodo',
-            value_name='ICV'
-        )
-        
-        orden = df_icv.columns.tolist()
-
-        # Ordenar los periodos según el orden original del df
-        df_long['Periodo'] = pd.Categorical(df_long['Periodo'], categories=orden, ordered=True)
-        df_long = df_long.sort_values('Periodo').reset_index(drop=True)
-        df_long['t'] = range(len(df_long))
-        
-        # Calcular regresión lineal simple manualmente
-        x = df_long['t']
-        y = df_long['ICV']
-        
-        # Fórmula de regresión lineal simple
-        n = len(x)
-        sum_x = x.sum()
-        sum_y = y.sum()
-        sum_xy = (x * y).sum()
-        sum_x2 = (x ** 2).sum()
-        
-        pendiente = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x ** 2)
-        intercepto = (sum_y - pendiente * sum_x) / n
-        
-        df_long['tendencia'] = intercepto + pendiente * df_long['t']
-        """
-        datos_graficas = calcular_datos_gráficas(columnas_historicas)
-        for idx, tab in enumerate([tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8]):
-            with tab:
-                col_name = columnas_historicas[idx]
-                df_long, pendiente, orden = datos_graficas[col_name]
-                
-                # Crear la gráfica
-                line_chart = (
-                    alt.Chart(df_long)
-                    .mark_line()
-                    .encode(
-                        x=alt.X('Periodo:N', sort=orden, title='Periodo'),
-                        y=alt.Y(f'{col_name}:Q', title=f'{col_name}'),
-                    )
-                )
-                
-                trend = (
-                    alt.Chart(df_long)
-                    .mark_line(strokeDash=[5,5], color='red') 
-                    .encode(
-                        x=alt.X('Periodo:N', sort=orden),
-                        y=alt.Y('tendencia:Q')
-                    )
-                )
-                
-                final_chart = line_chart + trend
-                
-                col1, col2 = st.columns([8,3])
-                # Mostrar título y tendencia
-                with col1:
-                    st.write (f"#### Análisis de {col_name} a lo largo del tiempo")
-                with col2:
-                    if pendiente > 0:
-                        st.success(f"Tendencia al alza (+{pendiente:,.2f})")
-                    else:
-                        st.error(f"Tendencia a la baja ({pendiente:,.2f})")
-                # Mostrar gráfica
-                st.altair_chart(final_chart, use_container_width=True)
-
-                
+    columnas_historicas = ["ICV", "Capital Dispersado", "Saldo Insoluto Total", "Saldo Insoluto Vencido", 
+                          "Saldo 30-89", "FPD Neto", "Castigos", "Quitas"]
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(columnas_historicas)
+    
+    datos_graficas = calcular_datos_gráficas(columnas_historicas)
+    
+    for idx, tab in enumerate([tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8]):
+        with tab:
+            col_name = columnas_historicas[idx]
+            df_long, pendiente, orden = datos_graficas[col_name]
             
-    with col6:
-        st.markdown("### Posibles causas")
-        st.warning(f"""
-        - Procesos clave ejecutados con inconsistencias.
-        - Falta de seguimiento en tareas críticas.
-        - Errores recurrentes en la operación diaria.
-        """)
-        
-    st.markdown("### Sugerencias de mejora")
-    st.info(f"""
-        - Reforzar seguimiento puntual de desempeño.
-        - Implementar acciones correctivas inmediatas.
-        - Revisar procesos críticos de operación.
-        - Ajustar estrategia para reducir riesgos.
-        - Monitorear indicadores críticos.
-        """)
+            # Crear la gráfica
+            line_chart = (
+                alt.Chart(df_long)
+                .mark_line(point=True, strokeWidth=3)
+                .encode(
+                    x=alt.X('Periodo:N', sort=orden, title='Periodo'),
+                    y=alt.Y(f'{col_name}:Q', title=f'{col_name}'),
+                    tooltip=['Periodo:N', alt.Tooltip(f'{col_name}:Q', format=',.2f')]
+                )
+            )
+            
+            trend = (
+                alt.Chart(df_long)
+                .mark_line(strokeDash=[5,5], color='red', strokeWidth=2) 
+                .encode(
+                    x=alt.X('Periodo:N', sort=orden),
+                    y=alt.Y('tendencia:Q')
+                )
+            )
+            
+            final_chart = line_chart + trend
+            
+            col1, col2 = st.columns([7, 3])
+            with col1:
+                st.write(f"#### Análisis de {col_name} a lo largo del tiempo")
+            with col2:
+                if pendiente > 0:
+                    st.markdown(f"""
+                    <div style='background: #ffebee; padding: 10px; border-radius: 6px; text-align: center;'>
+                        <p style='margin: 0; color: #c62828; font-weight: bold;'>
+                            📈 Tendencia al alza<br/>+{pendiente:,.2f}
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                    <div style='background: #e8f5e9; padding: 10px; border-radius: 6px; text-align: center;'>
+                        <p style='margin: 0; color: #2e7d32; font-weight: bold;'>
+                            📉 Tendencia a la baja<br/>{pendiente:,.2f}
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            st.altair_chart(final_chart, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # ========================================
+    # WIDGET DE CHAT
+    # ========================================
+    # Preparar contexto completo para el chat con info del dataset
+    chat_context = {
+        'sucursal_actual': df_filtered_cluster.iloc[0].to_dict(),
+        'dataset_completo': df_clusters.to_dict('records'),
+        'total_sucursales': len(df_clusters),
+        'sucursales_alto_riesgo': len(df_clusters[df_clusters['Nivel_Riesgo'] == 'Alto']),
+        'promedio_fpd': df_clusters['FPD_Neto_Actual'].mean(),
+        'promedio_icv': df_clusters['ICV_Actual'].mean()
+    }
+    chatWidget.render_chat_widget(chat_context)

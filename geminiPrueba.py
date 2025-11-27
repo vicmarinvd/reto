@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 import json
 
-streamlit.write("La API key existe:", "GEMINI_API_KEY" in streamlit.secrets)
+st.write("La API key existe:", "GEMINI_API_KEY" in st.secrets)
 
 # Instrucciones del sistema para DigiBot
 DIGIBOT_SYSTEM_INSTRUCTION = """
@@ -27,7 +27,7 @@ Clusters:
 def load_AI_info_sucursal(solicitud):
     load_dotenv()
 
-    api_key = streamlit.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+    api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
 
     if not api_key:
         raise ValueError("GEMINI_API_KEY no está configurada")

@@ -55,13 +55,43 @@ def load_AI_info_sucursal(solicitud):
 
 
 def analyze_branch_with_gemini(sucursal_data):
-    api_key = get_gemini_key()
+    """
+    Analiza una sucursal específica usando Gemini AI
+    
+    Args:
+        sucursal_data: Diccionario con datos de la sucursal
+        
+    Returns:
+        Diccionario con causes, suggestions y riskFactor
+    """
+    load_dotenv()
+    
+    prompt = f"""
+    Analiza la sucursal: {sucursal_data.get('Sucursal', 'N/A')}
+    Datos:
+    Cluster: {sucursal_data.get('Cluster_KM', 'N/A')}
+    Región: {sucursal_data.get('Región', 'N/A')}
+    FPD Neto: {sucursal_data.get('FPD_Neto_Actual', 0)}%
+    ICV: {sucursal_data.get('ICV_Actual', 0)}%
+    Morosidad: {sucursal_data.get('Tasa_Morosidad', 0)}%
+    Score Riesgo: {sucursal_data.get('Score_Riesgo', 0)}
 
-    prompt = f""" ... """
-
+    Genera:
+    1. Una lista de 5 posibles causas EXACTAS del riesgo o estado actual. (Máx 10 palabras c/u).
+    2. Una lista de 6 sugerencias de mejora concretas. (Máx 10 palabras c/u).
+    3. Identifica cual es el factor de riesgo número uno.
+    
+    Responde ÚNICAMENTE con un objeto JSON válido con esta estructura:
+    {{
+        "causes": ["causa1", "causa2", "causa3", "causa4", "causa5"],
+        "suggestions": ["sugerencia1", "sugerencia2", "sugerencia3", "sugerencia4", "sugerencia5", "sugerencia6"],
+        "riskFactor": "el indicador o factor que más pone en riesgo a la sucursal"
+    }}
+    """
+    
     try:
-        client = genai.Client(api_key=api_key)
-
+        client = genai.Client()
+        
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
@@ -71,9 +101,11 @@ def analyze_branch_with_gemini(sucursal_data):
                 "temperature": 0.4,
             }
         )
-
-        return json.loads(response.text)
-
+        
+        # Parsear respuesta JSON
+        analysis = json.loads(response.text)
+        return analysis
+        
     except Exception as e:
         print(f"❌ Error al analizar sucursal: {e}")
         return {

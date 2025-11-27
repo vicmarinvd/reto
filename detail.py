@@ -23,7 +23,9 @@ def render(return_main, load_data):
     df_filtered_cluster = df_clusters[df_clusters['Sucursal'] == suc]
     cluster = df_filtered_cluster['Cluster_KM'].values[0]
     region = df_filtered_cluster['Región'].values[0]
+    
     col1, col2 = st.columns([5,1])
+    
     with col1:
         st.subheader(f"Cluster: {cluster}")
     with col2: 
@@ -106,15 +108,15 @@ def render(return_main, load_data):
         """, unsafe_allow_html=True)
 
     with col4:
-        fpd_promedio = df_filtered_cluster['FPD_Neto_Actual'].mean()
-        fpd_global = df_clusters['FPD_Neto_Actual'].mean()
+        fpd_promedio = df_filtered_cluster['FPD_Actual'].mean()
+        fpd_global = df_clusters['FPD_Actual'].mean()
         delta_fpd = fpd_promedio - fpd_global
         delta_color_fpd = "#c62828" if delta_fpd > 0 else "#2e7d32"
-        delta_text_fpd = f"+${delta_fpd:,.0f}" if delta_fpd > 0 else f"${delta_fpd:,.0f}"
+        delta_text_fpd = f"+{delta_fpd:.2f}%" if delta_fpd > 0 else f"{delta_fpd:.2f}%"
         st.markdown(f"""
         <div class='metric-card'>
-            <h4>FPD Neto Promedio</h4>
-            <p>${fpd_promedio:,.0f}</p>
+            <h4>FPD Promedio</h4>
+            <p>{fpd_promedio:.2f}%</p>
             <small style='color: {delta_color_fpd}; font-weight: 600;'>{delta_text_fpd} vs promedio</small>
         </div>
         """, unsafe_allow_html=True)
@@ -129,7 +131,14 @@ def render(return_main, load_data):
         for col in nombre_columnas:
             formatted_col = col.replace(" ", "_").replace("-", "_")
             df_cols = df_completos[df_completos['Sucursal'] == suc].filter(like=formatted_col)
+            # Eliminar columnas de FPD_NETO
+            if col == "FPD":
+                regex = rf'^{formatted_col}_(T.*|[Aa]ctual.*)$'
+                df_cols = (df_completos[df_completos['Sucursal'] == suc].filter(regex=regex)) 
             
+            df_cols = df_cols.copy()
+            df_cols.columns = [c.rsplit("_", 1)[-1] for c in df_cols.columns]
+        
             # Pasar a formato largo
             df_long = df_cols.melt(
                 var_name='Periodo',
@@ -164,7 +173,7 @@ def render(return_main, load_data):
 
     with col5:
         # Gráfico de lineas del ICV a lo largo del tiempo con tendencia
-        columnas_historicas = ["ICV", "Capital Dispersado", "Saldo Insoluto Total", "Saldo Insoluto Vencido", "Saldo 30-89", "FPD Neto", "Castigos", "Quitas"]
+        columnas_historicas = ["ICV", "Capital Dispersado", "Saldo Insoluto Total", "Saldo Insoluto Vencido", "Saldo 30-89", "FPD", "Castigos", "Quitas"]
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(columnas_historicas)
         
         datos_graficas = calcular_datos_gráficas(columnas_historicas)
@@ -179,7 +188,20 @@ def render(return_main, load_data):
                     .mark_line()
                     .encode(
                         x=alt.X('Periodo:N', sort=orden, title='Periodo'),
-                        y=alt.Y(f'{col_name}:Q', title=f'{col_name}'),
+                        y=alt.Y(f'{col_name}:Q', title=f'{col_name}')
+                    )
+                )
+                
+                points = (
+                    alt.Chart(df_long)
+                    .mark_circle(size=70)   # tamaño del punto
+                    .encode(
+                        x=alt.X('Periodo:N', sort=orden),
+                        y=alt.Y(f'{col_name}:Q'),
+                        tooltip=[
+                            alt.Tooltip('Periodo:N', title='Periodo'),
+                            alt.Tooltip(f'{col_name}:Q', title=col_name, format=',.2f'),
+                        ]
                     )
                 )
                 
@@ -188,11 +210,15 @@ def render(return_main, load_data):
                     .mark_line(strokeDash=[5,5], color='red') 
                     .encode(
                         x=alt.X('Periodo:N', sort=orden),
-                        y=alt.Y('tendencia:Q')
+                        y=alt.Y('tendencia:Q'),
+                        tooltip=[
+                            alt.Tooltip('Periodo:N', title='Periodo'),
+                            alt.Tooltip('tendencia:Q', title='Tendencia', format=',.2f')
+                        ]
                     )
                 )
                 
-                final_chart = line_chart + trend
+                final_chart = line_chart + points + trend
                 
                 col1, col2 = st.columns([8,3])
                 # Mostrar título y tendencia
@@ -222,3 +248,4 @@ def render(return_main, load_data):
         - Ajustar estrategia para reducir riesgos.
         - Monitorear indicadores críticos.
         """)
+    

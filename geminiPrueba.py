@@ -61,7 +61,7 @@ def load_AI_info_sucursal(solicitud):
         Response object de Gemini o Exception en caso de error
     """
     load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = st.secrets["GEMINI_API_KEY"]
     
     try:
         client = genai.Client()

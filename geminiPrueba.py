@@ -7,6 +7,18 @@ import json
 
 # st.write("La API key existe:", "GEMINI_API_KEY" in st.secrets)
 
+def get_gemini_key():
+    load_dotenv()
+    import streamlit as st
+
+    api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        raise ValueError("❌ GEMINI_API_KEY no está configurada en st.secrets ni en el .env")
+
+    return api_key
+
+
 # Instrucciones del sistema para DigiBot
 DIGIBOT_SYSTEM_INSTRUCTION = """
 Rol del Agente: DigiBot
@@ -24,14 +36,8 @@ Clusters:
 - Premium: Alto desempeño.
 - Riesgo: Deterioro, alta probabilidad de pérdidas.
 """
-
 def load_AI_info_sucursal(solicitud):
-    load_dotenv()
-
-    api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
-
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY no está configurada")
+    api_key = get_gemini_key()
 
     try:
         client = genai.Client(api_key=api_key)
@@ -41,7 +47,6 @@ def load_AI_info_sucursal(solicitud):
             model="gemini-2.5-flash",
             contents=solicitud
         )
-
         return response
 
     except Exception as e:
@@ -49,45 +54,14 @@ def load_AI_info_sucursal(solicitud):
         return e
 
 
-
 def analyze_branch_with_gemini(sucursal_data):
-    """
-    Analiza una sucursal específica usando Gemini AI
-    
-    Args:
-        sucursal_data: Diccionario con datos de la sucursal
-        
-    Returns:
-        Diccionario con causes, suggestions y riskFactor
-    """
-    load_dotenv()
-    
-    prompt = f"""
-    Analiza la sucursal: {sucursal_data.get('Sucursal', 'N/A')}
-    Datos:
-    Cluster: {sucursal_data.get('Cluster_KM', 'N/A')}
-    Región: {sucursal_data.get('Región', 'N/A')}
-    FPD Neto: {sucursal_data.get('FPD_Neto_Actual', 0)}%
-    ICV: {sucursal_data.get('ICV_Actual', 0)}%
-    Morosidad: {sucursal_data.get('Tasa_Morosidad', 0)}%
-    Score Riesgo: {sucursal_data.get('Score_Riesgo', 0)}
+    api_key = get_gemini_key()
 
-    Genera:
-    1. Una lista de 5 posibles causas EXACTAS del riesgo o estado actual. (Máx 10 palabras c/u).
-    2. Una lista de 6 sugerencias de mejora concretas. (Máx 10 palabras c/u).
-    3. Identifica cual es el factor de riesgo número uno.
-    
-    Responde ÚNICAMENTE con un objeto JSON válido con esta estructura:
-    {{
-        "causes": ["causa1", "causa2", "causa3", "causa4", "causa5"],
-        "suggestions": ["sugerencia1", "sugerencia2", "sugerencia3", "sugerencia4", "sugerencia5", "sugerencia6"],
-        "riskFactor": "el indicador o factor que más pone en riesgo a la sucursal"
-    }}
-    """
-    
+    prompt = f""" ... """
+
     try:
         client = genai.Client(api_key=api_key)
-        
+
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
@@ -97,11 +71,9 @@ def analyze_branch_with_gemini(sucursal_data):
                 "temperature": 0.4,
             }
         )
-        
-        # Parsear respuesta JSON
-        analysis = json.loads(response.text)
-        return analysis
-        
+
+        return json.loads(response.text)
+
     except Exception as e:
         print(f"❌ Error al analizar sucursal: {e}")
         return {
@@ -112,27 +84,15 @@ def analyze_branch_with_gemini(sucursal_data):
 
 
 def chat_with_digibot(history, new_message, context_data=""):
-    """
-    Mantiene una conversación con DigiBot
-    
-    Args:
-        history: Lista de mensajes previos en formato [{'role': 'user/model', 'parts': [{'text': '...'}]}]
-        new_message: Nuevo mensaje del usuario
-        context_data: Contexto adicional (datos de sucursal actual, etc.)
-        
-    Returns:
-        String con la respuesta de DigiBot
-    """
-    load_dotenv()
-    
+    api_key = get_gemini_key()
+
     system_instruction = DIGIBOT_SYSTEM_INSTRUCTION
     if context_data:
         system_instruction += f"\n\nContexto actual de datos en pantalla:\n{context_data}"
-    
+
     try:
         client = genai.Client(api_key=api_key)
-        
-        # Crear chat con historial
+
         chat = client.chats.create(
             model="gemini-2.5-flash",
             config={
@@ -141,11 +101,10 @@ def chat_with_digibot(history, new_message, context_data=""):
             },
             history=history
         )
-        
-        # Enviar nuevo mensaje
+
         result = chat.send_message(message=new_message)
         return result.text
-        
+
     except Exception as e:
         print(f"❌ Error en chat: {e}")
         return "Lo siento, tuve un problema al procesar tu solicitud. Por favor verifica tu conexión o API Key."

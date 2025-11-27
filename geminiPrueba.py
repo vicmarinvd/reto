@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 import os
 import json
 
+st.write("La API key existe:", "GEMINI_API_KEY" in st.secrets)
+
 # Instrucciones del sistema para DigiBot
 DIGIBOT_SYSTEM_INSTRUCTION = """
 Rol del Agente: DigiBot

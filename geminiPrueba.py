@@ -37,7 +37,12 @@ Clusters:
 - Riesgo: Deterioro, alta probabilidad de pérdidas.
 """
 def load_AI_info_sucursal(solicitud):
-    api_key = get_gemini_key()
+    load_dotenv()
+
+    api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY no está configurada")
 
     try:
         client = genai.Client(api_key=api_key)
@@ -52,6 +57,7 @@ def load_AI_info_sucursal(solicitud):
     except Exception as e:
         print(f"❌ Error al inicializar Gemini: {e}")
         return e
+
 
 
 def analyze_branch_with_gemini(sucursal_data):
@@ -99,9 +105,8 @@ def analyze_branch_with_gemini(sucursal_data):
     """
 
     try:
-        # Inicializar cliente Gemini con la API key correcta
         client = genai.Client(api_key=api_key)
-
+        
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
@@ -134,7 +139,8 @@ def chat_with_digibot(history, new_message, context_data=""):
 
     try:
         client = genai.Client(api_key=api_key)
-
+        
+        # Crear chat con historial
         chat = client.chats.create(
             model="gemini-2.5-flash",
             config={

@@ -28,14 +28,15 @@ def render_chat_widget(current_context: Optional[Dict] = None):
         st.session_state.pending_message = None
     
     # CSS para chat flotante en esquina inferior derecha
-    st.markdown("""
+    """
+    st.markdown(
     <style>
     [data-testid="stChatMessageContent"] {
         padding: 0 !important;
     }
     </style>
-    """, unsafe_allow_html=True)
-    
+    , unsafe_allow_html=True)
+    """
     # Renderizar chat como sidebar flotante
     if st.session_state.chat_open:
         # Crear contenedor flotante
@@ -132,11 +133,9 @@ Tienes acceso a información de todas las sucursales. El usuario puede preguntar
     # Botón flotante para abrir chat (siempre visible en esquina)
     if not st.session_state.chat_open:
         # Usar columnas para posicionar en esquina
-        col1, col2, col3 = st.columns([5, 1, 1])
-        with col3:
-            if st.button("💬", key="open_chat", help="Abrir DigiBot", use_container_width=True):
-                st.session_state.chat_open = True
-                st.rerun()
+        if st.button("💬", key="open_chat", help="Abrir DigiBot", use_container_width=True):
+            st.session_state.chat_open = True
+            st.rerun()
 
 
 def reset_chat():

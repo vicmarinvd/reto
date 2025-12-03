@@ -150,3 +150,4 @@ def chat_with_digibot(history, new_message, context_data=""):
     except Exception as e:
         print(f"❌ Error en chat: {e}")
         return "Lo siento, tuve un problema al procesar tu solicitud. Por favor verifica tu conexión o API Key."
+    

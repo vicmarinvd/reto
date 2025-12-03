@@ -156,6 +156,21 @@ h2, h3 {
     transition: all 0.3s ease !important;
 }
 
+/* Ocultar los checkbox reales en la columna "Ver Detalle" */
+div[data-testid="stDataEditor"] div[aria-colindex="5"] input[type="checkbox"] {
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+/* Mostrar ícono ➡️ en lugar del checkbox */
+div[data-testid="stDataEditor"] div[aria-colindex="5"] div[role="checkbox"]::after {
+    content: "➡️";
+    font-size: 20px;
+    cursor: pointer;
+    position: relative;
+    top: 2px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -172,6 +187,9 @@ def load_data():
     
     # Limpiar datos
     df_clusters = df_clusters.dropna(subset=['Región'])
+    
+    # Dejar solo sucursales únicas
+    df_clusters = df_clusters.drop_duplicates(subset=['Sucursal'])
     
     # Calcular métricas de riesgo
     df_clusters['Tasa_Morosidad'] = (df_clusters['Saldo_Insoluto_Vencido_Actual'] / 
@@ -318,11 +336,10 @@ def render_main_page():
         st.subheader("Filtros por Métricas")
 
         fpd_range = st.slider(
-            "FPD Neto ($)",
+            "FPD (%)",
             min_value=0.0,
             max_value=float(df_clusters['FPD_Actual'].max()),
             value=(0.0, float(df_clusters['FPD_Actual'].max())),
-            format="$%.0f",
             key='fpd_slider'
         )
 
@@ -703,7 +720,7 @@ def render_main_page():
         ].copy()
         
         # Tabla con todas las métricas
-        st.subheader("Top 10 Sucursales - Indicadores de Riesgo")
+        # st.subheader("Top 10 Sucursales - Indicadores de Riesgo")
         
         tabla_top10 = top_10_riesgo.copy()
         tabla_top10['FPD_Actual'] = tabla_top10['FPD_Actual'].apply(lambda x: f"{x:.2f}%")
@@ -713,21 +730,40 @@ def render_main_page():
         tabla_top10['Castigos_Actual'] = tabla_top10['Castigos_Actual'].apply(lambda x: f"${x:,.0f}")
         tabla_top10['Quitas_Actual'] = tabla_top10['Quitas_Actual'].apply(lambda x: f"${x:,.0f}")
         tabla_top10['Score_Riesgo'] = tabla_top10['Score_Riesgo'].apply(lambda x: f"{x:.2f}")
+        tabla_top10['Ver'] = False
         
         tabla_top10.columns = [
             'Sucursal', 'Región', 'Cluster', 'FPD %', 'ICV %',
-            'Capital Dispersado', 'Saldo Insoluto', 'Castigos', 'Quitas', 'Score Riesgo', 'Nivel Riesgo'
+            'Capital Dispersado', 'Saldo Insoluto', 'Castigos', 'Quitas', 'Score Riesgo', 'Nivel Riesgo', 'Ver Detalle'
         ]
         
         num_filas = min(len(tabla_top10), 10)
         alto_tabla_top = 35 + num_filas * 35 
         
-        st.dataframe(
-            tabla_top10.reset_index(drop=True),
+        
+        edited = st.data_editor(
+            tabla_top10,
             use_container_width=True,
-            height=alto_tabla_top
+            height=alto_tabla_top,
+            hide_index=True,
+            column_config={
+                "Ver Detalle": st.column_config.CheckboxColumn(
+                    label="Ver",
+                    help="Da clic para ver el detalle de una sucursal específica"
+                )
+            },
+            disabled=[col for col in tabla_top10.columns if col != "Ver Detalle"]
         )
 
+        # 🔹 Detectar cuál checkbox fue activado
+        seleccionados = edited[edited["Ver Detalle"] == True]
+        if not seleccionados.empty:
+            sucursal = seleccionados.iloc[0]["Sucursal"]
+            seleccionados = edited[edited["Ver Detalle"] == False]
+            go_to_detail(sucursal)
+        
+        # ---------------------------
+        
     else:
         st.warning("⚠️ No hay datos disponibles con los filtros actuales")
 

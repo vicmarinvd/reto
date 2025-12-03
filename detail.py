@@ -11,18 +11,33 @@ def render(return_main, load_data):
     
     # Mostrar detalles de la sucursal seleccionada
     suc = st.session_state.selected_sucursal
-    col1, col2 = st.columns([6,1])
-    with col1: 
-        st.header(f"Detalles de sucursal {suc}")
-    with col2: 
-        if st.button("Main"):
-            return_main()
-    
     # Cluster al que pertenece
     df_filtered_cluster = df_clusters[df_clusters['Sucursal'] == suc]
     cluster = df_filtered_cluster['Cluster_KM'].values[0]
+    # cluster_nombre = cluster == 0 and "Estándar" or cluster == 1 and "Selectivas" or "En riesgo"
     region = df_filtered_cluster['Región'].values[0]
     nivel_riesgo = df_filtered_cluster['Nivel_Riesgo'].values[0]
+    
+    col1, col2, col3 = st.columns([6,1,1])
+    with col1: 
+        st.header(f"Detalles de sucursal {suc}")
+    with col2: 
+        # ========================================
+        # WIDGET DE CHAT
+        # ========================================
+        # Preparar contexto completo para el chat con info del dataset
+        chat_context = {
+            'sucursal_actual': df_filtered_cluster.iloc[0].to_dict(),
+            'dataset_completo': df_clusters.to_dict('records'),
+            'total_sucursales': len(df_clusters),
+            'sucursales_alto_riesgo': len(df_clusters[df_clusters['Nivel_Riesgo'] == 'Alto']),
+            'promedio_fpd': df_clusters['FPD_Actual'].mean(),
+            'promedio_icv': df_clusters['ICV_Actual'].mean()
+        }
+        chatWidget.render_chat_widget(chat_context)
+    with col3:
+        if st.button("Regresar"):
+            return_main()
     
     col1, col2, col3 = st.columns([3, 2, 2])
     with col1:
@@ -215,7 +230,7 @@ def render(return_main, load_data):
         return datos
 
     columnas_historicas = ["ICV", "Capital Dispersado", "Saldo Insoluto Total", "Saldo Insoluto Vencido", 
-                          "Saldo 30-89", "FPD Neto", "Castigos", "Quitas"]
+                          "Saldo 30-89", "FPD", "Castigos", "Quitas"]
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(columnas_historicas)
     
     datos_graficas = calcular_datos_gráficas(columnas_historicas)
@@ -225,13 +240,19 @@ def render(return_main, load_data):
             col_name = columnas_historicas[idx]
             df_long, pendiente, orden = datos_graficas[col_name]
             
+            if col_name == "ICV" or col_name == "FPD":
+                y_label = f'{col_name} (%)'
+                pendiente_label = 'pp'
+            else:
+                y_label = f'{col_name} ($MXN)'
+                pendiente_label = '$MXN'
             # Crear la gráfica
             line_chart = (
                 alt.Chart(df_long)
                 .mark_line(point=True, strokeWidth=3)
                 .encode(
                     x=alt.X('Periodo:N', sort=orden, title='Periodo'),
-                    y=alt.Y(f'{col_name}:Q', title=f'{col_name}'),
+                    y=alt.Y(f'{col_name}:Q', title=y_label),
                     tooltip=['Periodo:N', alt.Tooltip(f'{col_name}:Q', format=',.2f')]
                 )
             )
@@ -255,7 +276,7 @@ def render(return_main, load_data):
                     st.markdown(f"""
                     <div style='background: #ffebee; padding: 10px; border-radius: 6px; text-align: center;'>
                         <p style='margin: 0; color: #c62828; font-weight: bold;'>
-                            📈 Tendencia al alza<br/>+{pendiente:,.2f}
+                            📈 Tendencia al alza<br/>+{pendiente:,.2f} {pendiente_label}
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -263,25 +284,9 @@ def render(return_main, load_data):
                     st.markdown(f"""
                     <div style='background: #e8f5e9; padding: 10px; border-radius: 6px; text-align: center;'>
                         <p style='margin: 0; color: #2e7d32; font-weight: bold;'>
-                            📉 Tendencia a la baja<br/>{pendiente:,.2f}
+                            📉 Tendencia a la baja<br/>{pendiente:,.2f} {pendiente_label}
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
             
             st.altair_chart(final_chart, use_container_width=True)
-    
-    st.markdown("---")
-    
-    # ========================================
-    # WIDGET DE CHAT
-    # ========================================
-    # Preparar contexto completo para el chat con info del dataset
-    chat_context = {
-        'sucursal_actual': df_filtered_cluster.iloc[0].to_dict(),
-        'dataset_completo': df_clusters.to_dict('records'),
-        'total_sucursales': len(df_clusters),
-        'sucursales_alto_riesgo': len(df_clusters[df_clusters['Nivel_Riesgo'] == 'Alto']),
-        'promedio_fpd': df_clusters['FPD_Actual'].mean(),
-        'promedio_icv': df_clusters['ICV_Actual'].mean()
-    }
-    chatWidget.render_chat_widget(chat_context)

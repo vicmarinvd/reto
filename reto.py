@@ -20,7 +20,7 @@ if "selected_sucursal" not in st.session_state:
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Dashboard de Riesgo - Sucursales",
+    page_title="DigiAnalytics",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -171,6 +171,22 @@ div[data-testid="stDataEditor"] div[aria-colindex="5"] div[role="checkbox"]::aft
     position: relative;
     top: 2px;
 }
+
+/* Estilo para el box de información */
+.info-box {
+    background-color: #e8f5e9;
+    border-left: 4px solid #2e7d32;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 0.9em;
+    color: #14532d;
+}
+
+.info-box strong {
+    color: #0A3D20;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -286,7 +302,7 @@ def render_main_page():
     # ========================================
     
     with st.sidebar:
-        st.header("Filtros de Análisis")
+        st.header("Filtrados y Búsqueda")
         
         st.markdown('<div class="sidebar-fixed-container">', unsafe_allow_html=True)
         
@@ -390,13 +406,13 @@ def render_main_page():
     # ========================================
     # Título principal
     # ========================================
-    st.title("Dashboard de Análisis de Riesgo - Sucursales")
+    st.title("DigiAnalytics")
     st.markdown("---")
 
     # ========================================
     # KPIs PRINCIPALES
     # ========================================
-    st.header("Indicadores Clave de Desempeño")
+    st.header("Métricas de Desempeño")
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -518,7 +534,7 @@ def render_main_page():
     # ========================================
     # MÉTRICAS GENERALES POR CLUSTER Y REGIÓN
     # ========================================
-    st.header("Métricas Generales por Cluster y Región")
+    st.header("Métricas por Cluster y Región")
 
     tab1, tab2 = st.tabs(["Por Región", "Por Cluster"])
 
@@ -624,8 +640,25 @@ def render_main_page():
             tabla_display['Saldo_Vencido'] = tabla_display['Saldo_Vencido'].apply(lambda x: f"${x:,.0f}")
             tabla_display['FPD_Promedio'] = tabla_display['FPD_Promedio'].apply(lambda x: f"{x:.2f}%")
             tabla_display['ICV_Promedio'] = tabla_display['ICV_Promedio'].apply(lambda x: f"{x:.2f}%")
-            tabla_display['Morosidad_Promedio'] = tabla_display['Morosidad_Promedio'].apply(lambda x: f"{x:.2f}%")
             tabla_display['Score_Riesgo'] = tabla_display['Score_Riesgo'].apply(lambda x: f"{x:.2f}")
+            
+            # Renombrar columnas para mejor legibilidad
+            tabla_display = tabla_display.rename(columns={
+                'Región': 'Región',
+                'Num_Sucursales': 'Número de Sucursales',
+                'Capital_Dispersado': 'Capital Dispersado',
+                'Saldo_Insoluto': 'Saldo Insoluto',
+                'Saldo_Vencido': 'Saldo Vencido',
+                'FPD_Promedio': 'FPD Promedio',
+                'ICV_Promedio': 'ICV Promedio',
+                'Score_Riesgo': 'Score de Riesgo'
+            })
+            
+            # Seleccionar columnas sin Morosidad
+            tabla_display = tabla_display[[
+                'Región', 'Número de Sucursales', 'Capital Dispersado', 'Saldo Insoluto',
+                'Saldo Vencido', 'FPD Promedio', 'ICV Promedio', 'Score de Riesgo'
+            ]]
             
             st.dataframe(tabla_display, use_container_width=True, hide_index=True)
 
@@ -699,17 +732,43 @@ def render_main_page():
             tabla_cluster_display['Saldo_Vencido'] = tabla_cluster_display['Saldo_Vencido'].apply(lambda x: f"${x:,.0f}")
             tabla_cluster_display['FPD_Promedio'] = tabla_cluster_display['FPD_Promedio'].apply(lambda x: f"{x:.2f}%")
             tabla_cluster_display['ICV_Promedio'] = tabla_cluster_display['ICV_Promedio'].apply(lambda x: f"{x:.2f}%")
-            tabla_cluster_display['Morosidad_Promedio'] = tabla_cluster_display['Morosidad_Promedio'].apply(lambda x: f"{x:.2f}%")
             tabla_cluster_display['Score_Riesgo'] = tabla_cluster_display['Score_Riesgo'].apply(lambda x: f"{x:.2f}")
+            
+            # Renombrar columnas para mejor legibilidad
+            tabla_cluster_display = tabla_cluster_display.rename(columns={
+                'Cluster': 'Cluster',
+                'Num_Sucursales': 'Número de Sucursales',
+                'Capital_Dispersado': 'Capital Dispersado',
+                'Saldo_Insoluto': 'Saldo Insoluto',
+                'Saldo_Vencido': 'Saldo Vencido',
+                'FPD_Promedio': 'FPD Promedio',
+                'ICV_Promedio': 'ICV Promedio',
+                'Score_Riesgo': 'Score de Riesgo'
+            })
+            
+            # Seleccionar columnas sin Morosidad
+            tabla_cluster_display = tabla_cluster_display[[
+                'Cluster', 'Número de Sucursales', 'Capital Dispersado', 'Saldo Insoluto',
+                'Saldo Vencido', 'FPD Promedio', 'ICV Promedio', 'Score de Riesgo'
+            ]]
             
             st.dataframe(tabla_cluster_display, use_container_width=True, hide_index=True)
 
     st.markdown("---")
 
+     # Agregar información sobre cómo se calcula el score
+    st.markdown("""
+    <div class='info-box'>
+        <strong>ℹ️ Cálculo del Score de Riesgo:</strong> El score se calcula como una suma ponderada de tres componentes: 
+        <strong>FPD </strong>, <strong>Morosidad </strong> e <strong>ICV </strong>. 
+        Cada componente se normaliza respecto a su valor máximo en el conjunto de datos. 
+    </div>
+    """, unsafe_allow_html=True)
+
     # ========================================
     # TOP 10 SUCURSALES EN RIESGO - TABLA ÚNICA
     # ========================================
-    st.header("Top 10 Sucursales en Riesgo")
+    st.header("Sucursales con Mayor Riesgo")
 
     if len(df_filtered) > 0:
         # Obtener top 10 por score de riesgo
@@ -770,7 +829,7 @@ def render_main_page():
     st.markdown("---")
 
     # Footer con resumen
-    st.header("Resumen Ejecutivo")
+    st.header("Resumen y Recomendaciones")
 
     col1, col2, col3 = st.columns(3)
 
@@ -814,4 +873,4 @@ def render_main_page():
 if st.session_state.page == "reto":
     render_main_page()  
 elif st.session_state.page == "detail":
-    detail.render(go_to_main, load_data)     
+    detail.render(go_to_main, load_data)
